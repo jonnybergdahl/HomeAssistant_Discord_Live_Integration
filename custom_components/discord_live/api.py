@@ -11,9 +11,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 import logging
+from typing import Any
 
 import aiohttp
 import discord
+
+from .recurrence import RecurrenceRule
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -65,6 +68,7 @@ class DiscordEvent:
     channel_id: int | None = None
     cover_url: str | None = None
     user_count: int | None = None
+    recurrence: RecurrenceRule | None = None
 
     @property
     def live(self) -> bool:
@@ -92,7 +96,9 @@ def _entity_type_name(entity_type: discord.EntityType) -> str:
     return "external"
 
 
-def _to_event(event: discord.ScheduledEvent) -> DiscordEvent:
+def _to_event(
+    event: discord.ScheduledEvent, recurrence: RecurrenceRule | None = None
+) -> DiscordEvent:
     """Convert a discord.py ScheduledEvent to a DiscordEvent."""
     return DiscordEvent(
         id=event.id,
@@ -108,6 +114,7 @@ def _to_event(event: discord.ScheduledEvent) -> DiscordEvent:
         channel_id=event.channel_id,
         cover_url=event.cover_image.url if event.cover_image else None,
         user_count=event.user_count,
+        recurrence=recurrence,
     )
 
 
@@ -127,7 +134,6 @@ class DiscordLiveClient:
         """Initialize the client."""
         self._token = token
         self._client = discord.Client(intents=discord.Intents.none())
-        self._guilds: dict[int, discord.Guild] = {}
         self._logged_in = False
 
     async def login(self) -> str:
@@ -152,38 +158,41 @@ class DiscordLiveClient:
             raise DiscordConnectionError(str(err)) from err
 
     async def guild_info(self, guild_id: int) -> GuildInfo:
-        """Fetch (and cache) a single guild."""
-        guild = await self._fetch_guild(guild_id)
-        return _to_guild_info(guild)
-
-    async def events(self, guild_id: int) -> list[DiscordEvent]:
-        """Return the scheduled and active events of a guild."""
-        guild = self._guilds.get(guild_id) or await self._fetch_guild(guild_id)
+        """Fetch a single guild."""
         try:
-            events = await guild.fetch_scheduled_events(with_counts=True)
+            guild = await self._client.fetch_guild(guild_id)
         except discord.HTTPException as err:
             raise self._map_http_error(err) from err
         except aiohttp.ClientError as err:
             raise DiscordConnectionError(str(err)) from err
-        return [_to_event(e) for e in events]
+        return _to_guild_info(guild)
+
+    async def events(self, guild_id: int) -> list[DiscordEvent]:
+        """Return the scheduled and active events of a guild."""
+        # discord.py drops the recurrence rule when it builds ScheduledEvent
+        # objects, so fetch the raw payloads and build the objects ourselves.
+        try:
+            payloads: list[dict[str, Any]] = (
+                await self._client.http.get_scheduled_events(guild_id, True)
+            )
+        except discord.HTTPException as err:
+            raise self._map_http_error(err) from err
+        except aiohttp.ClientError as err:
+            raise DiscordConnectionError(str(err)) from err
+        state = self._client._connection  # noqa: SLF001
+        return [
+            _to_event(
+                discord.ScheduledEvent(state=state, data=data),
+                RecurrenceRule.from_payload(data.get("recurrence_rule")),
+            )
+            for data in payloads
+        ]
 
     async def close(self) -> None:
         """Close the underlying HTTP session."""
         if self._logged_in:
             await self._client.close()
             self._logged_in = False
-
-    async def _fetch_guild(self, guild_id: int) -> discord.Guild:
-        """Fetch a guild and cache it for later event lookups."""
-        try:
-            guild = await self._client.fetch_guild(guild_id)
-        except discord.HTTPException as err:
-            self._guilds.pop(guild_id, None)
-            raise self._map_http_error(err) from err
-        except aiohttp.ClientError as err:
-            raise DiscordConnectionError(str(err)) from err
-        self._guilds[guild_id] = guild
-        return guild
 
     @staticmethod
     def _map_http_error(err: discord.HTTPException) -> DiscordLiveError:

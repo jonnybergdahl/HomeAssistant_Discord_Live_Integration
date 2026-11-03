@@ -10,6 +10,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util, slugify
 
+from .const import UPCOMING_RECURRENCE_HORIZON
 from .coordinator import DiscordLiveCoordinator
 from .entity import group_device_info
 
@@ -58,12 +59,14 @@ class DiscordLiveUpcomingSensor(
         """Return the group's still-active events, sorted by start time.
 
         Uses the coordinator's shared event set and active check so this
-        sensor stays consistent with the calendar and binary sensors.
+        sensor stays consistent with the calendar and binary sensors. Repeats
+        of recurring events are included up to UPCOMING_RECURRENCE_HORIZON
+        ahead.
         """
         now = dt_util.now()
         upcoming = [
             e
-            for e in self.coordinator.relevant_events()
+            for e in self.coordinator.calendar_events(now + UPCOMING_RECURRENCE_HORIZON)
             if self.coordinator.is_event_active(e, now)
         ]
         return sorted(upcoming, key=lambda e: e.scheduled_start)

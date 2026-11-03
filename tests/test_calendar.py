@@ -9,6 +9,10 @@ from freezegun.api import FrozenDateTimeFactory
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
+from dataclasses import replace
+
+from custom_components.discord_live.recurrence import FREQUENCY_WEEKLY, RecurrenceRule
+
 from .conftest import make_event, setup_integration
 
 CALENDAR = "calendar.discord_live_test_group"
@@ -93,3 +97,33 @@ async def test_ended_event_is_trimmed(
     events = await _get_events(hass, start - timedelta(hours=1), start + timedelta(hours=3))
     assert len(events) == 1
     assert dt_util.parse_datetime(events[0]["end"]) == start + timedelta(minutes=30)
+
+
+async def test_recurring_event_occurrences(
+    hass: HomeAssistant, mock_config_entry, mock_client
+) -> None:
+    """Future occurrences of a recurring event are expanded from its rule."""
+    start = dt_util.utcnow().replace(microsecond=0) + timedelta(hours=1)
+    rule = RecurrenceRule(
+        start=start, frequency=FREQUENCY_WEEKLY, by_weekday=(start.weekday(),)
+    )
+    event = replace(
+        make_event(scheduled_start=start, scheduled_end=start + timedelta(minutes=90)),
+        recurrence=rule,
+    )
+    mock_client.events.return_value = [event]
+    await setup_integration(hass, mock_config_entry)
+
+    events = await _get_events(hass, start - timedelta(hours=1), start + timedelta(days=22))
+    starts = [dt_util.parse_datetime(e["start"]) for e in events]
+    assert starts == [start + timedelta(weeks=w) for w in range(4)]
+    for e in events:
+        duration = dt_util.parse_datetime(e["end"]) - dt_util.parse_datetime(e["start"])
+        assert duration == timedelta(minutes=90)
+
+    # The upcoming sensor lists repeats up to 30 days ahead.
+    state = hass.states.get("sensor.discord_live_test_group_upcoming")
+    assert state.state == "5"
+    for i in range(5):
+        assert dt_util.parse_datetime(state.attributes[f"event_{i}_start"]) == start + timedelta(weeks=i)
+        assert state.attributes[f"event_{i}_duration"] == 90

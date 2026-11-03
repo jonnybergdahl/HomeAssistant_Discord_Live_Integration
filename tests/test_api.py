@@ -48,37 +48,75 @@ async def test_login_failure(discord_client) -> None:
         await DiscordLiveClient("token").login()
 
 
+def _payload(**overrides) -> dict:
+    """A raw scheduled event payload, as returned by the Discord API."""
+    data = {
+        "id": "1",
+        "guild_id": "111",
+        "channel_id": "555",
+        "creator_id": "9",
+        "name": "Game Night",
+        "description": "Fun",
+        "scheduled_start_time": "2026-01-06T18:00:00+00:00",
+        "scheduled_end_time": None,
+        "privacy_level": 2,
+        "status": 2,
+        "entity_type": 1,
+        "entity_id": None,
+        "entity_metadata": None,
+        "user_count": 3,
+        "image": "abc123",
+        "recurrence_rule": None,
+    }
+    data.update(overrides)
+    return data
+
+
 async def test_events_are_converted(discord_client) -> None:
-    """ScheduledEvents are converted to DiscordEvents."""
-    start = datetime(2026, 1, 1, 18, tzinfo=timezone.utc)
-    scheduled = SimpleNamespace(
-        id=1,
-        guild_id=111,
-        name="Game Night",
-        description="Fun",
-        start_time=start,
-        end_time=None,
-        status=discord.EventStatus.active,
-        entity_type=discord.EntityType.stage_instance,
-        location=None,
-        channel_id=555,
-        cover_image=SimpleNamespace(url="https://cdn/cover.png"),
-        user_count=3,
-        url="https://discord.com/events/111/1",
-    )
-    guild = MagicMock()
-    guild.fetch_scheduled_events = AsyncMock(return_value=[scheduled])
-    discord_client.fetch_guild = AsyncMock(return_value=guild)
+    """Raw payloads are converted to DiscordEvents."""
+    discord_client.http.get_scheduled_events = AsyncMock(return_value=[_payload()])
 
     events = await DiscordLiveClient("token").events(111)
 
+    discord_client.http.get_scheduled_events.assert_awaited_with(111, True)
     assert len(events) == 1
     event = events[0]
+    assert event.id == 1
+    assert event.guild_id == 111
     assert event.live
     assert event.entity_type == "stage"
-    assert event.cover_url == "https://cdn/cover.png"
-    assert event.scheduled_start == start
-    guild.fetch_scheduled_events.assert_awaited_with(with_counts=True)
+    assert event.scheduled_start == datetime(2026, 1, 6, 18, tzinfo=timezone.utc)
+    assert event.scheduled_end is None
+    assert event.cover_url.startswith("https://cdn.discordapp.com/guild-events/1/abc123")
+    assert event.url == "https://discord.com/events/111/1"
+    assert event.user_count == 3
+    assert event.recurrence is None
+
+
+async def test_recurrence_rule_is_kept(discord_client) -> None:
+    """The recurrence rule that discord.py drops is parsed from the payload."""
+    rule = {
+        "start": "2026-01-06T18:00:00+00:00",
+        "end": None,
+        "frequency": 2,
+        "interval": 1,
+        "by_weekday": [1],
+        "by_n_weekday": None,
+        "by_month": None,
+        "by_month_day": None,
+        "by_year_day": None,
+        "count": None,
+    }
+    discord_client.http.get_scheduled_events = AsyncMock(
+        return_value=[_payload(status=1, recurrence_rule=rule)]
+    )
+
+    event = (await DiscordLiveClient("token").events(111))[0]
+
+    assert not event.live
+    assert event.recurrence is not None
+    assert event.recurrence.frequency == 2
+    assert event.recurrence.by_weekday == (1,)
 
 
 @pytest.mark.parametrize(
@@ -92,6 +130,9 @@ async def test_events_are_converted(discord_client) -> None:
 )
 async def test_http_errors_are_mapped(discord_client, error, expected) -> None:
     """discord.py HTTP errors map to the integration's exceptions."""
-    discord_client.fetch_guild = AsyncMock(side_effect=error)
+    discord_client.http.get_scheduled_events = AsyncMock(side_effect=error)
     with pytest.raises(expected):
         await DiscordLiveClient("token").events(111)
+    discord_client.fetch_guild = AsyncMock(side_effect=error)
+    with pytest.raises(expected):
+        await DiscordLiveClient("token").guild_info(111)

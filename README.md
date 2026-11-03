@@ -80,6 +80,8 @@ One **`calendar.discord_live_<group>`** entity listing the scheduled events for 
 
 Each event uses `<server> - <event name>` as its summary, the event description followed by the event link as its description, and the external location (for external events) as its location. An event uses the end time set in Discord, or lasts 2 hours if none is set. A live event stays open while it is live. Once an event ends, its end time is trimmed to when it actually ended, and it stays on the calendar for 24 hours.
 
+**Recurring events** are shown with all their future occurrences. Discord only returns the next occurrence, so later ones are calculated from the event's repeat rule, and they keep the duration of the next occurrence. A single later occurrence that was moved or cancelled in Discord still shows at its regular time. Those one-off changes aren't part of Discord's documented API, so they aren't handled.
+
 ### Per-server binary sensors
 
 One **`binary_sensor.discord_live_<server>`** per server in the group. The sensor turns **on** while any event on that server is live, and **off** otherwise. It shows as **unavailable** if the bot loses access to the server.
@@ -123,9 +125,9 @@ When at least one event is live, these additional attributes describe the first 
 
 ### Upcoming events sensor (for ESPHome)
 
-One **`sensor.discord_live_<group>_upcoming`** per group. The state is the number of upcoming or currently live events in the group.
+One **`sensor.discord_live_<group>_upcoming`** per group. The state is the number of upcoming or currently live events in the group, counting each repeat of a recurring event within the next 30 days.
 
-This sensor is designed for easy consumption by ESPHome devices (e.g. using `text_sensor` with `attribute` mapping). It exposes the next 5 events, ordered by start time, as a flat list of attributes.
+This sensor is designed for easy consumption by ESPHome devices (e.g. using `text_sensor` with `attribute` mapping). It exposes the next 5 events, ordered by start time, as a flat list of attributes. Repeats of recurring events are included for the next 30 days, so a weekly event shows up about four times.
 
 | Attribute | Description |
 |---|---|

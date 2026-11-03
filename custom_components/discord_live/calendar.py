@@ -100,7 +100,7 @@ class DiscordLiveCalendar(
     ) -> list[CalendarEvent]:
         """Return calendar events within a datetime range."""
         events: list[CalendarEvent] = []
-        for event in self.coordinator.relevant_events():
+        for event in self.coordinator.calendar_events(end_date):
             calendar_event = self._to_calendar_event(event)
             if calendar_event.start < end_date and calendar_event.end > start_date:
                 events.append(calendar_event)

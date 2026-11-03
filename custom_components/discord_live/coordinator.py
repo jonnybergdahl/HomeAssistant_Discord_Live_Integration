@@ -14,6 +14,7 @@ from homeassistant.util import dt as dt_util
 
 from .api import (
     STATUS_COMPLETED,
+    STATUS_SCHEDULED,
     DiscordAuthError,
     DiscordConnectionError,
     DiscordEvent,
@@ -211,6 +212,37 @@ class DiscordLiveCoordinator(DataUpdateCoordinator[DiscordLiveCoordinatorData]):
         for ended in self.data.ended:
             if event_key(ended.event) not in known:
                 events.append(ended.event)
+        return events
+
+    def future_occurrences(
+        self, event: DiscordEvent, until: datetime
+    ) -> list[DiscordEvent]:
+        """Return the occurrences of a recurring event after the current one.
+
+        Discord only returns the next occurrence of a recurring event. Later
+        occurrences are expanded from its recurrence rule, up to ``until``, and
+        keep the duration of the current occurrence.
+        """
+        if event.recurrence is None:
+            return []
+        duration = self.event_end_time(event) - event.scheduled_start
+        return [
+            replace(
+                event,
+                scheduled_start=start,
+                scheduled_end=start + duration if event.scheduled_end else None,
+                status=STATUS_SCHEDULED,
+                user_count=None,
+            )
+            for start in event.recurrence.occurrences(event.scheduled_start, until)
+        ]
+
+    def calendar_events(self, until: datetime) -> list[DiscordEvent]:
+        """Return relevant events plus future occurrences up to ``until``."""
+        events = self.relevant_events()
+        if self.data:
+            for event in self.data.events:
+                events.extend(self.future_occurrences(event, until))
         return events
 
     def events_for_guild(self, guild_id: int) -> list[DiscordEvent]:

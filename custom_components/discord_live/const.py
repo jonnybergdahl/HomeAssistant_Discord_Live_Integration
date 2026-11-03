@@ -13,3 +13,5 @@ GUILD_INFO_INTERVAL = timedelta(minutes=30)
 DEFAULT_EVENT_DURATION_HOURS = 2
 # How long an ended event stays on the calendar after Discord stops returning it
 ENDED_EVENT_RETENTION = timedelta(hours=24)
+# How far ahead the upcoming sensor lists repeats of recurring events
+UPCOMING_RECURRENCE_HORIZON = timedelta(days=30)
