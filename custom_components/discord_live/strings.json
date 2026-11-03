@@ -1,0 +1,63 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Add Discord server group",
+                "description": "Create a group of Discord servers (e.g. 'Gaming', 'Community') to monitor for scheduled events. The bot must already be a member of the servers.",
+                "data": {
+                    "group_name": "Group name",
+                    "bot_token": "Bot token"
+                },
+                "data_description": {
+                    "group_name": "A name for this group, used as the device name in Home Assistant.",
+                    "bot_token": "The token of your Discord bot, from the Bot page in the Discord Developer Portal."
+                }
+            },
+            "guilds": {
+                "title": "Select servers",
+                "description": "Select the servers to include in this group.",
+                "data": {
+                    "guild_ids": "Servers"
+                }
+            },
+            "reauth_confirm": {
+                "title": "Update bot token",
+                "description": "Discord rejected the bot token. Enter a new token.",
+                "data": {
+                    "bot_token": "Bot token"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "Could not connect to Discord. Please try again later.",
+            "invalid_auth": "Discord rejected the bot token.",
+            "no_guilds": "The bot is not a member of any server. Invite it to a server first.",
+            "no_guilds_selected": "Select at least one server.",
+            "no_group_name": "Group name cannot be empty.",
+            "unknown": "Unexpected error"
+        },
+        "abort": {
+            "already_configured": "A group with this name is already configured.",
+            "reauth_successful": "The bot token was updated."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Edit servers in this group",
+                "description": "Add or remove servers in this group.",
+                "data": {
+                    "guild_ids": "Servers"
+                }
+            }
+        },
+        "error": {
+            "no_guilds_selected": "Select at least one server."
+        },
+        "abort": {
+            "cannot_connect": "Could not connect to Discord. Please try again later.",
+            "invalid_auth": "Discord rejected the bot token.",
+            "unknown": "Unexpected error"
+        }
+    }
+}

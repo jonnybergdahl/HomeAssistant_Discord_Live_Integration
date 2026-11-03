@@ -1,0 +1,14 @@
+{
+    "domain": "discord_live",
+    "name": "Discord Live",
+    "codeowners": ["@jonnybergdahl"],
+    "config_flow": true,
+    "dependencies": [],
+    "documentation": "https://github.com/jonnybergdahl/HomeAssistant_Discord_Live_Integration",
+    "integration_type": "service",
+    "iot_class": "cloud_polling",
+    "issue_tracker": "https://github.com/jonnybergdahl/HomeAssistant_Discord_Live_Integration/issues",
+    "loggers": ["discord"],
+    "requirements": ["discord.py==2.7.1"],
+    "version": "0.1.0"
+}

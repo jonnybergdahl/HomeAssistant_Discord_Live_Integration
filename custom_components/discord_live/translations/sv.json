@@ -1,0 +1,63 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Lägg till grupp med Discord-servrar",
+                "description": "Skapa en grupp med Discord-servrar (t.ex. 'Gaming', 'Community') att bevaka för schemalagda evenemang. Boten måste redan vara medlem i servrarna.",
+                "data": {
+                    "group_name": "Gruppnamn",
+                    "bot_token": "Bot-token"
+                },
+                "data_description": {
+                    "group_name": "Ett namn på gruppen, används som enhetsnamn i Home Assistant.",
+                    "bot_token": "Din Discord-bots token, från sidan Bot i Discord Developer Portal."
+                }
+            },
+            "guilds": {
+                "title": "Välj servrar",
+                "description": "Välj vilka servrar som ska ingå i gruppen.",
+                "data": {
+                    "guild_ids": "Servrar"
+                }
+            },
+            "reauth_confirm": {
+                "title": "Uppdatera bot-token",
+                "description": "Discord godkände inte bot-token. Ange en ny token.",
+                "data": {
+                    "bot_token": "Bot-token"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "Kunde inte ansluta till Discord. Försök igen senare.",
+            "invalid_auth": "Discord godkände inte bot-token.",
+            "no_guilds": "Boten är inte medlem i någon server. Bjud in den till en server först.",
+            "no_guilds_selected": "Välj minst en server.",
+            "no_group_name": "Gruppnamnet får inte vara tomt.",
+            "unknown": "Oväntat fel"
+        },
+        "abort": {
+            "already_configured": "En grupp med det här namnet finns redan.",
+            "reauth_successful": "Bot-token har uppdaterats."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Redigera servrar i gruppen",
+                "description": "Lägg till eller ta bort servrar i gruppen.",
+                "data": {
+                    "guild_ids": "Servrar"
+                }
+            }
+        },
+        "error": {
+            "no_guilds_selected": "Välj minst en server."
+        },
+        "abort": {
+            "cannot_connect": "Kunde inte ansluta till Discord. Försök igen senare.",
+            "invalid_auth": "Discord godkände inte bot-token.",
+            "unknown": "Oväntat fel"
+        }
+    }
+}
