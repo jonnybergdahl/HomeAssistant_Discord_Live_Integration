@@ -15,13 +15,54 @@ An event counts as **live** while Discord reports it as *active*: when someone s
 
 ## Bot setup
 
-The integration reads events through a Discord bot that you create yourself.
+The integration reads events through a Discord bot that you create yourself. The bot only reads scheduled events: it never posts messages, joins voice channels or reads chat, and it needs no privileged gateway intents.
 
-1. Open the [Discord Developer Portal](https://discord.com/developers/applications) and click **New Application**.
-2. On the **Bot** page, click **Reset Token** and copy the token. You will paste it into Home Assistant.
-3. On the **OAuth2** page, use the URL generator: select the scope **`bot`** and the permission **View Channels**, then open the generated URL and add the bot to each server you want to monitor.
+A bot can only see the events of servers it has been added to, and only someone with the **Manage Server** permission can add it. You can add it to your own servers yourself. For anyone else's server, you send the invite link to someone who runs it.
 
-No privileged gateway intents are needed. Events tied to a channel the bot can't view are not returned by Discord, so make sure the bot can see the channels your events use.
+### 1. Create the bot
+
+1. Open the [Discord Developer Portal](https://discord.com/developers/applications) and click **New Application**. Give it a name, e.g. `Home Assistant Events`. Server members will see this name in the member list.
+2. On the **General Information** page, copy the **Application ID**. You need it for the invite link.
+3. On the **Bot** page:
+    - Click **Reset Token** and copy the token. You will paste it into Home Assistant. Keep it secret: anyone with the token can act as your bot. If it leaks, reset it again and update Home Assistant (it asks for the new token).
+    - Make sure **Public Bot** is turned on if you want other server admins to be able to add it. With it off, only you can add the bot.
+    - Leave all **Privileged Gateway Intents** turned off.
+
+### 2. Create the invite link
+
+Replace `YOUR_APP_ID` with the Application ID from step 1:
+
+```
+https://discord.com/oauth2/authorize?client_id=YOUR_APP_ID&scope=bot&permissions=1024&integration_type=0
+```
+
+- `scope=bot` adds it as a bot user.
+- `permissions=1024` is **View Channels** and nothing else.
+- `integration_type=0` makes it a server install.
+
+You can also build the same link in the portal: on the **OAuth2** page, open the **URL Generator**, tick the **`bot`** scope, then tick **View Channels** under Bot Permissions, and copy the generated URL at the bottom.
+
+### 3. Add the bot to your own server
+
+Open the invite link, pick the server, and click **Authorize**. Only servers where you have **Manage Server** are listed. Repeat for each server you want to monitor.
+
+### 4. Ask a server admin to add it
+
+To monitor a server you don't run, send the invite link to its owner or an admin. Something like:
+
+> Hi! I'd like to show the events of this server in my Home Assistant (calendar and a "live now" indicator). Could you add my bot? It only has the View Channels permission. It can't post, join voice or read messages, it just reads the scheduled events list.
+>
+> https://discord.com/oauth2/authorize?client_id=YOUR_APP_ID&scope=bot&permissions=1024&integration_type=0
+
+Once they have authorized it, the server shows up in the integration's server list. Open the group's **Configure** action in Home Assistant and select it.
+
+### 5. Private channels
+
+Discord only returns events whose channel the bot can see. The bot sees public channels straight away. If an event is in a private stage or voice channel, someone with Manage Channels needs to open that channel's settings, go to **Permissions**, add the bot (or its role, named after the bot) and allow **View Channel**. External events (with a link or place as the location) aren't tied to a channel, so they need nothing extra.
+
+### Trying it out without a server
+
+If you don't run any server, create your own for testing. In Discord, click **+** (Add a Server) at the bottom of the server list, choose **Create My Own**, and invite the bot with the link above. Then create an event (click the server name, then **Create Event**) that starts in a few minutes, and click **Start Event** to see the sensors turn on.
 
 ## Installation
 
