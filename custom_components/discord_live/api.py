@@ -20,6 +20,32 @@ from .recurrence import RecurrenceRule
 
 _LOGGER = logging.getLogger(__name__)
 
+
+class _IrrelevantWarningFilter(logging.Filter):
+    """Drop discord.py warnings that do not apply to a REST-only client.
+
+    discord.py warns about missing voice support and the disabled guilds
+    intent when the client is created. Neither matters here, since no gateway
+    connection is ever opened.
+    """
+
+    _PREFIXES = (
+        "davey is not installed",
+        "Guilds intent seems to be disabled",
+    )
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """Return False for the warnings to drop."""
+        return not record.getMessage().startswith(self._PREFIXES)
+
+
+for _name in ("discord.client", "discord.state"):
+    _logger = logging.getLogger(_name)
+    if not any(
+        type(f).__name__ == _IrrelevantWarningFilter.__name__ for f in _logger.filters
+    ):
+        _logger.addFilter(_IrrelevantWarningFilter())
+
 STATUS_SCHEDULED = "scheduled"
 STATUS_ACTIVE = "active"
 STATUS_COMPLETED = "completed"
